@@ -5,7 +5,7 @@
   android:id="@+id/rootView"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
-  android:background="@color/tool_bg"
+  android:background="@color/black"
   app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
 
@@ -48,10 +48,10 @@
     android:id="@+id/rvConstraintTools"
     android:layout_width="0dp"
     android:layout_height="wrap_content"
-    android:background="@color/tool_bg"
+    android:background="@color/black"
     android:orientation="horizontal"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
     app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
     app:layout_constraintBottom_toTopOf="@+id/guideline"
     app:layout_constraintEnd_toEndOf="parent"
@@ -62,7 +62,7 @@
     android:id="@+id/rvFilterView"
     android:layout_width="0dp"
     android:layout_height="0dp"
-    android:background="@color/tool_bg"
+    android:background="@color/black"
     android:orientation="horizontal"
     app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
     app:layout_constraintBottom_toBottomOf="@+id/rvConstraintTools"
@@ -88,7 +88,7 @@
     android:layout_height="wrap_content"
     android:singleLine="true"
     android:text="@string/app_name"
-    android:textColor="@android:color/white"
+    android:textColor="@color/white"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="parent"
     app:layout_constraintStart_toStartOf="parent"
@@ -105,6 +105,7 @@
     android:paddingHorizontal="12dp"
     android:paddingVertical="6dp"
     android:text="@string/done"
+    android:textColor="@color/white"
     android:textStyle="bold"
     app:layout_constraintEnd_toEndOf="parent"
     app:layout_constraintTop_toBottomOf="@+id/guideline" />

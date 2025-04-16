@@ -7,11 +7,13 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.Window
@@ -56,7 +58,7 @@ import java.io.File
 
 open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, View.OnClickListener,
   PropertiesBSFragment.Properties, ShapeBSFragment.Properties, StickerListener,
-  OnItemSelected, FilterListener {
+  OnItemSelected, FilterListener, AdjustFragment.AdjustListener {
   private var mPhotoEditor: PhotoEditor? = null
   private var mProgressDialog: ProgressDialog? = null
   private var mPhotoEditorView: PhotoEditorView? = null
@@ -72,6 +74,9 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
   private var mRootView: ConstraintLayout? = null
   private val mConstraintSet = ConstraintSet()
   private var mIsFilterVisible = false
+  private var mAdjustFragment: AdjustFragment? = null
+  private var mImageAdjustHelper: ImageAdjustHelper? = null
+  private var mOriginalBitmap: Bitmap? = null
 
   @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,6 +109,10 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
 
     mShapeBSFragment = ShapeBSFragment()
     mShapeBSFragment!!.setPropertiesChangeListener(this)
+
+    // 初始化调整Fragment
+    mAdjustFragment = AdjustFragment()
+    mAdjustFragment!!.setAdjustListener(this)
 
     val llmTools = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
     mRvTools!!.layoutManager = llmTools
@@ -143,7 +152,32 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
           dataSource: DataSource?,
           isFirstResource: Boolean
         ): Boolean {
-          //
+          // 改进获取原始图像的方法
+          resource?.let {
+            // 使用post确保视图已完全加载
+            mPhotoEditorView?.post {
+              try {
+                // 从drawable转换为bitmap
+                val bitmap = Bitmap.createBitmap(
+                  mPhotoEditorView!!.source.width,
+                  mPhotoEditorView!!.source.height,
+                  Bitmap.Config.ARGB_8888
+                )
+                val canvas = Canvas(bitmap)
+                mPhotoEditorView!!.source.drawable.setBounds(
+                  0, 0,
+                  mPhotoEditorView!!.source.width,
+                  mPhotoEditorView!!.source.height
+                )
+                mPhotoEditorView!!.source.drawable.draw(canvas)
+                mOriginalBitmap = bitmap
+
+                Log.d(TAG, "原始图像获取成功: ${bitmap.width}x${bitmap.height}")
+              } catch (e: Exception) {
+                Log.e(TAG, "获取原始图像失败: ${e.message}")
+              }
+            }
+          }
           return false
         }
       })
@@ -182,6 +216,20 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
       WindowManager.LayoutParams.FLAG_FULLSCREEN,
       WindowManager.LayoutParams.FLAG_FULLSCREEN
     )
+
+    // 如果当前运行的Android系统版本是Android 5.0(API 21)及以上
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      // 清除FLAG_FULLSCREEN标志以显示状态栏
+      window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+      // 设置状态栏为黑色
+      window.statusBarColor = Color.BLACK
+
+      // 如果Android版本是Android 6.0(API 23)及以上，可以设置状态栏图标颜色
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // 设置状态栏图标为浅色（在黑色背景上显示白色图标）
+        window.decorView.systemUiVisibility = 0 // 清除亮色图标标志
+      }
+    }
   }
 
   private fun initViews() {
@@ -274,31 +322,47 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
       val file = File(path, fileName)
       path.mkdirs()
 
-      mPhotoEditor!!.saveAsFile(file.absolutePath, object : OnSaveListener {
-        override fun onSuccess(@NonNull imagePath: String) {
-          hideLoading()
-          val intent = Intent()
-          intent.putExtra("path", imagePath)
-          setResult(ResponseCode.RESULT_OK, intent)
-          finish()
+      // 使用PhotoEditor保存编辑后的图像
+      val saveTask = Runnable {
+        // 如果有调整过的图像，先应用到PhotoEditorView
+        if (mImageAdjustHelper != null && mImageAdjustHelper!!.adjustedBitmap != null) {
+          mPhotoEditorView?.source?.setImageBitmap(mImageAdjustHelper!!.adjustedBitmap)
         }
 
-        override fun onFailure(@NonNull exception: Exception) {
-          hideLoading()
-          if (!hasStoragePermission) {
-            requestPer()
-          } else {
-            mPhotoEditorView?.let {
-              val snackBar = Snackbar.make(
-                it, R.string.save_error,
-                Snackbar.LENGTH_SHORT)
-              snackBar.setBackgroundTint(Color.WHITE)
-              snackBar.setActionTextColor(Color.BLACK)
-              snackBar.setAction("Ok", null).show()
+        mPhotoEditor!!.saveAsFile(file.absolutePath, object : OnSaveListener {
+          override fun onSuccess(@NonNull imagePath: String) {
+            hideLoading()
+            val intent = Intent()
+            intent.putExtra("path", imagePath)
+            setResult(ResponseCode.RESULT_OK, intent)
+            finish()
+          }
+
+          override fun onFailure(@NonNull exception: Exception) {
+            hideLoading()
+            Log.e(TAG, "保存失败: ${exception.message}", exception)
+            if (!hasStoragePermission) {
+              requestPer()
+            } else {
+              mPhotoEditorView?.let {
+                val snackBar = Snackbar.make(
+                  it, R.string.save_error,
+                  Snackbar.LENGTH_SHORT)
+                snackBar.setBackgroundTint(Color.WHITE)
+                snackBar.setActionTextColor(Color.BLACK)
+                snackBar.setAction("Ok", null).show()
+              }
             }
           }
-        }
-      })
+        })
+      }
+
+      // 在UI线程上运行保存任务
+      if (Looper.myLooper() != Looper.getMainLooper()) {
+        runOnUiThread(saveTask)
+      } else {
+        saveTask.run()
+      }
     } else {
       requestPer()
     }
@@ -360,6 +424,14 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
         mTxtCurrentTool!!.setText(R.string.label_shape)
         showBottomSheetDialogFragment(mShapeBSFragment)
       }
+      ToolType.ERASER -> {
+        mPhotoEditor!!.brushEraser()
+        mTxtCurrentTool!!.setText(R.string.label_eraser)
+      }
+      ToolType.FILTER -> {
+        mTxtCurrentTool!!.setText(R.string.label_filter)
+        showFilter(true)
+      }
       ToolType.TEXT -> {
         val textEditorDialogFragment = TextEditorDialogFragment.show(this)
         textEditorDialogFragment.setOnTextEditorListener { inputText: String?, colorCode: Int ->
@@ -369,15 +441,50 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
           mTxtCurrentTool!!.setText(R.string.label_text)
         }
       }
-      ToolType.ERASER -> {
-        mPhotoEditor!!.brushEraser()
-        mTxtCurrentTool!!.setText(R.string.label_eraser_mode)
+      ToolType.ADJUST -> {
+        mTxtCurrentTool!!.setText(R.string.label_adjust)
+        // 确保只在有原始图像时创建ImageAdjustHelper
+        if (mOriginalBitmap != null) {
+          if (mImageAdjustHelper == null) {
+            Log.d(TAG, "创建ImageAdjustHelper")
+            mImageAdjustHelper = ImageAdjustHelper(mPhotoEditorView!!.source, mOriginalBitmap!!)
+          }
+          showBottomSheetDialogFragment(mAdjustFragment)
+        } else {
+          // 如果原始图像为空，尝试重新获取
+          try {
+            val bitmap = Bitmap.createBitmap(
+              mPhotoEditorView!!.source.width,
+              mPhotoEditorView!!.source.height,
+              Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            mPhotoEditorView!!.source.drawable.setBounds(
+              0, 0,
+              mPhotoEditorView!!.source.width,
+              mPhotoEditorView!!.source.height
+            )
+            mPhotoEditorView!!.source.drawable.draw(canvas)
+            mOriginalBitmap = bitmap
+
+            Log.d(TAG, "调整工具: 重新获取原始图像成功")
+            mImageAdjustHelper = ImageAdjustHelper(mPhotoEditorView!!.source, mOriginalBitmap!!)
+            showBottomSheetDialogFragment(mAdjustFragment)
+          } catch (e: Exception) {
+            Log.e(TAG, "调整工具: 获取原始图像失败: ${e.message}")
+            // 显示错误提示
+            Snackbar.make(
+              mPhotoEditorView!!,
+              "无法获取原始图像，请重试",
+              Snackbar.LENGTH_SHORT
+            ).show()
+          }
+        }
       }
-      ToolType.FILTER -> {
-        mTxtCurrentTool!!.setText(R.string.label_filter)
-        showFilter(true)
+      else -> {
+        mPhotoEditor!!.setBrushDrawingMode(false)
+        mTxtCurrentTool!!.setText(R.string.app_name)
       }
-      ToolType.STICKER -> showBottomSheetDialogFragment(mStickerFragment)
     }
   }
 
@@ -424,6 +531,32 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
     } else {
       onCancel()
     }
+  }
+
+  // 实现AdjustFragment.AdjustListener接口方法
+  override fun onBrightnessChanged(brightness: Int) {
+    mImageAdjustHelper?.setBrightness(brightness)
+  }
+
+  override fun onContrastChanged(contrast: Int) {
+    mImageAdjustHelper?.setContrast(contrast)
+  }
+
+  override fun onSaturationChanged(saturation: Int) {
+    mImageAdjustHelper?.setSaturation(saturation)
+  }
+
+  override fun onAdjustReset() {
+    mImageAdjustHelper?.resetAdjustments()
+  }
+
+  // 重写onDestroy方法，释放资源
+  override fun onDestroy() {
+    super.onDestroy()
+    mImageAdjustHelper?.release()
+    mImageAdjustHelper = null
+    mOriginalBitmap?.recycle()
+    mOriginalBitmap = null
   }
 
   companion object {

@@ -49,7 +49,16 @@ public class ColorPickerAdapter extends RecyclerView.Adapter<ColorPickerAdapter.
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.colorPickerView.setBackgroundColor(colorPickerColors.get(position));
+        int colorCode = colorPickerColors.get(position);
+        // 使用DrawableHelper创建带有圆角和边框的Drawable
+        Drawable roundedColorDrawable = DrawableHelper.createRoundedColorDrawable(
+            context,
+            colorCode,
+            1f,  // 1dp边框
+            Color.BLACK,  // 黑色边框
+            4f   // 4dp圆角
+        );
+        holder.colorPickerView.setBackground(roundedColorDrawable);
     }
 
     @Override

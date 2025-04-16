@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <color name="colorPrimary">#3F51B5</color>
-  <color name="colorPrimaryDark">#303F9F</color>
-  <color name="colorAccent">#FF4081</color>
+  <color name="colorPrimary">#000000</color>
+  <color name="colorPrimaryDark">#000000</color>
+  <color name="colorAccent">#333333</color>
 
-  <color name="background">#06080B</color>
+  <color name="background">#000000</color>
   <color name="black">#000000</color>
   <color name="white">#FFFFFF</color>
-  <color name="pri">#F6D167</color>
+  <color name="pri">#000000</color>
   <color name="blue_color_picker">#0066FF</color>
   <color name="brown_color_picker">#AF593E</color>
   <color name="green_color_picker">#01A368</color>
@@ -18,7 +18,14 @@
   <color name="violet_color_picker">#8359A3</color>
   <color name="yellow_color_picker">#FBE870</color>
   <color name="yellow_green_color_picker">#C5E17A</color>
-  <color name="tool_bg">#000</color>
+  <color name="tool_bg">#000000</color>
+  <color name="tool_item_bg">#333333</color>
   <color name="semi_black_transparent">#99000000</color>
-
+  <color name="text_color_primary">#FFFFFF</color>
+  <color name="text_color_secondary">#CCCCCC</color>
+  <color name="seekbar_track">#CCCCCC</color>
+  <color name="seekbar_thumb">#000000</color>
+  <color name="divider">#EEEEEE</color>
+  <color name="shape_selected">#222222</color>
+  <color name="shape_unselected">#666666</color>
 </resources>
