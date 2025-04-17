@@ -36,13 +36,13 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/baronha/react-native-photo-editor",
-  "author": "Baron Ha. <baronn.ha@gmail.com> (https://github.com/baronha)",
+  "repository": "https://github.com/jibo001/react-native-photo-editor",
+  "author": "jibo001",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/baronha/react-native-photo-editor/issues"
+    "url": "https://github.com/jibo001/react-native-photo-editor/issues"
   },
-  "homepage": "https://github.com/baronha/react-native-photo-editor#readme",
+  "homepage": "https://github.com/jibo001/react-native-photo-editor#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
