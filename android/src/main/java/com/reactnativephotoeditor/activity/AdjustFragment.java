@@ -1,5 +1,6 @@
 package com.reactnativephotoeditor.activity;
 
+import android.app.Dialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,6 +13,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.reactnativephotoeditor.R;
 
@@ -32,6 +34,22 @@ public class AdjustFragment extends BottomSheetDialogFragment implements SeekBar
 
     public void setAdjustListener(AdjustListener adjustListener) {
         mAdjustListener = adjustListener;
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setStyle(BottomSheetDialogFragment.STYLE_NORMAL, R.style.CustomBottomSheetDialogTheme);
+    }
+
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+        Dialog dialog = super.onCreateDialog(savedInstanceState);
+        if (dialog instanceof BottomSheetDialog) {
+            ((BottomSheetDialog) dialog).getBehavior().setSkipCollapsed(true);
+        }
+        return dialog;
     }
 
     @Nullable

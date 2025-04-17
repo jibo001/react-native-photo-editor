@@ -6,12 +6,14 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Bundle
 import android.os.StrictMode
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.URLUtil
 import android.widget.ImageView
+import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.recyclerview.widget.GridLayoutManager
@@ -19,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetBehavior.BottomSheetCallback
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.reactnativephotoeditor.R
 import java.io.InputStream
@@ -28,6 +31,20 @@ import java.net.URL
 class StickerFragment : BottomSheetDialogFragment() {
   private var mStickerListener: StickerListener? = null
   private var data: List<String> = emptyList()
+
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setStyle(BottomSheetDialogFragment.STYLE_NORMAL, R.style.CustomBottomSheetDialogTheme)
+  }
+
+  @NonNull
+  override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+    val dialog = super.onCreateDialog(savedInstanceState)
+    if (dialog is BottomSheetDialog) {
+      dialog.behavior.skipCollapsed = true
+    }
+    return dialog
+  }
 
   fun setStickerListener(stickerListener: StickerListener?) {
     mStickerListener = stickerListener
