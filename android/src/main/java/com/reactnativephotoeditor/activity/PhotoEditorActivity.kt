@@ -59,6 +59,14 @@ import java.io.File
 open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, View.OnClickListener,
   PropertiesBSFragment.Properties, ShapeBSFragment.Properties, StickerListener,
   OnItemSelected, FilterListener, AdjustFragment.AdjustListener {
+
+  companion object {
+    val TAG = PhotoEditorActivity::class.java.simpleName
+    const val PINCH_TEXT_SCALABLE_INTENT_KEY = "PINCH_TEXT_SCALABLE"
+    const val READ_WRITE_STORAGE = 52
+    const val CROP_REQUEST_CODE = 1
+  }
+
   private var mPhotoEditor: PhotoEditor? = null
   private var mProgressDialog: ProgressDialog? = null
   private var mPhotoEditorView: PhotoEditorView? = null
@@ -421,19 +429,44 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
         mPhotoEditor!!.setBrushDrawingMode(true)
         mShapeBuilder = ShapeBuilder()
         mPhotoEditor!!.setShape(mShapeBuilder)
-        mTxtCurrentTool!!.setText(R.string.label_shape)
+        mTxtCurrentTool!!.setText(R.string.shapeBrush)
         showBottomSheetDialogFragment(mShapeBSFragment)
       }
       ToolType.ERASER -> {
         mPhotoEditor!!.brushEraser()
-        mTxtCurrentTool!!.setText(R.string.label_eraser)
+        mTxtCurrentTool!!.setText(R.string.label_eraser_mode)
       }
       ToolType.FILTER -> {
+        mIsFilterVisible = !mIsFilterVisible
+        mConstraintSet.clone(mRootView)
+        if (mIsFilterVisible) {
+          mConstraintSet.connect(
+            mRvFilters!!.id, ConstraintSet.START,
+            ConstraintSet.PARENT_ID, ConstraintSet.START
+          )
+          mConstraintSet.connect(
+            mRvFilters!!.id, ConstraintSet.END,
+            ConstraintSet.PARENT_ID, ConstraintSet.END
+          )
+        } else {
+          mConstraintSet.connect(
+            mRvFilters!!.id, ConstraintSet.START,
+            ConstraintSet.PARENT_ID, ConstraintSet.END
+          )
+          mConstraintSet.connect(
+            mRvFilters!!.id, ConstraintSet.END,
+            ConstraintSet.PARENT_ID, ConstraintSet.END
+          )
+        }
+        val changeBounds = ChangeBounds()
+        changeBounds.duration = 350
+        changeBounds.interpolator = AnticipateOvershootInterpolator(1.0f)
+        TransitionManager.beginDelayedTransition(mRootView!!, changeBounds)
+        mConstraintSet.applyTo(mRootView)
         mTxtCurrentTool!!.setText(R.string.label_filter)
-        showFilter(true)
       }
       ToolType.TEXT -> {
-        val textEditorDialogFragment = TextEditorDialogFragment.show(this)
+        val textEditorDialogFragment = TextEditorDialogFragment.show(this, R.string.text_hint)
         textEditorDialogFragment.setOnTextEditorListener { inputText: String?, colorCode: Int ->
           val styleBuilder = TextStyleBuilder()
           styleBuilder.withTextColor(colorCode)
@@ -442,44 +475,12 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
         }
       }
       ToolType.ADJUST -> {
+        showAdjustFragment()
         mTxtCurrentTool!!.setText(R.string.label_adjust)
-        // 确保只在有原始图像时创建ImageAdjustHelper
-        if (mOriginalBitmap != null) {
-          if (mImageAdjustHelper == null) {
-            Log.d(TAG, "创建ImageAdjustHelper")
-            mImageAdjustHelper = ImageAdjustHelper(mPhotoEditorView!!.source, mOriginalBitmap!!)
-          }
-          showBottomSheetDialogFragment(mAdjustFragment)
-        } else {
-          // 如果原始图像为空，尝试重新获取
-          try {
-            val bitmap = Bitmap.createBitmap(
-              mPhotoEditorView!!.source.width,
-              mPhotoEditorView!!.source.height,
-              Bitmap.Config.ARGB_8888
-            )
-            val canvas = Canvas(bitmap)
-            mPhotoEditorView!!.source.drawable.setBounds(
-              0, 0,
-              mPhotoEditorView!!.source.width,
-              mPhotoEditorView!!.source.height
-            )
-            mPhotoEditorView!!.source.drawable.draw(canvas)
-            mOriginalBitmap = bitmap
-
-            Log.d(TAG, "调整工具: 重新获取原始图像成功")
-            mImageAdjustHelper = ImageAdjustHelper(mPhotoEditorView!!.source, mOriginalBitmap!!)
-            showBottomSheetDialogFragment(mAdjustFragment)
-          } catch (e: Exception) {
-            Log.e(TAG, "调整工具: 获取原始图像失败: ${e.message}")
-            // 显示错误提示
-            Snackbar.make(
-              mPhotoEditorView!!,
-              "无法获取原始图像，请重试",
-              Snackbar.LENGTH_SHORT
-            ).show()
-          }
-        }
+      }
+      ToolType.CROP -> {
+        startCropActivity()
+        mTxtCurrentTool!!.setText(R.string.label_crop)
       }
       else -> {
         mPhotoEditor!!.setBrushDrawingMode(false)
@@ -559,9 +560,137 @@ open class PhotoEditorActivity : AppCompatActivity(), OnPhotoEditorListener, Vie
     mOriginalBitmap = null
   }
 
-  companion object {
-    private val TAG = PhotoEditorActivity::class.java.simpleName
-    const val PINCH_TEXT_SCALABLE_INTENT_KEY = "PINCH_TEXT_SCALABLE"
-    const val READ_WRITE_STORAGE = 52
+  private fun startCropActivity() {
+    // 保存当前编辑状态的临时图像
+    showLoading("处理中...")
+
+    mPhotoEditor?.saveAsFile(getCacheFilePath(), object : OnSaveListener {
+      override fun onSuccess(imagePath: String) {
+        hideLoading()
+
+        // 启动裁剪活动
+        imagePath.let {
+          val intent = Intent(this@PhotoEditorActivity, CropImageActivity::class.java)
+          intent.putExtra("path", "file://$it")
+          startActivityForResult(intent, CROP_REQUEST_CODE)
+        }
+      }
+
+      override fun onFailure(exception: Exception) {
+        hideLoading()
+        showSnackbar("保存失败: ${exception.message}")
+      }
+    })
+  }
+
+  private fun getCacheFilePath(): String {
+    val cachePath = File(cacheDir, "temp_images")
+    if (!cachePath.exists()) {
+      cachePath.mkdirs()
+    }
+    return File(cachePath, "temp_edit_${System.currentTimeMillis()}.jpg").absolutePath
+  }
+
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+
+    if (requestCode == CROP_REQUEST_CODE && resultCode == ResponseCode.RESULT_OK) {
+      // 获取裁剪后的图像路径
+      val croppedPath = data?.getStringExtra("path")
+
+      // 加载裁剪后的图像
+      croppedPath?.let {
+        // 清除当前所有编辑
+        mPhotoEditor?.clearAllViews()
+
+        // 加载新图像
+        Glide.with(this)
+          .load(croppedPath)
+          .listener(object : RequestListener<Drawable> {
+            override fun onLoadFailed(
+              e: GlideException?,
+              model: Any?,
+              target: Target<Drawable>?,
+              isFirstResource: Boolean
+            ): Boolean {
+              showSnackbar("加载裁剪图像失败")
+              return false
+            }
+
+            override fun onResourceReady(
+              resource: Drawable?,
+              model: Any?,
+              target: Target<Drawable>?,
+              dataSource: DataSource?,
+              isFirstResource: Boolean
+            ): Boolean {
+              resource?.let {
+                // 更新原始位图以便调整功能可以正常工作
+                mPhotoEditorView?.post {
+                  try {
+                    val bitmap = Bitmap.createBitmap(
+                      mPhotoEditorView!!.source.width,
+                      mPhotoEditorView!!.source.height,
+                      Bitmap.Config.ARGB_8888
+                    )
+                    val canvas = Canvas(bitmap)
+                    mPhotoEditorView!!.source.drawable.setBounds(
+                      0, 0,
+                      mPhotoEditorView!!.source.width,
+                      mPhotoEditorView!!.source.height
+                    )
+                    mPhotoEditorView!!.source.drawable.draw(canvas)
+                    mOriginalBitmap = bitmap
+                  } catch (e: Exception) {
+                    Log.e(TAG, "获取原始图像失败: ${e.message}")
+                  }
+                }
+              }
+              return false
+            }
+          })
+          .into(mPhotoEditorView!!.source)
+      }
+    }
+  }
+
+  private fun showSnackbar(message: String) {
+    Snackbar.make(mPhotoEditorView!!, message, Snackbar.LENGTH_SHORT).show()
+  }
+
+  private fun showAdjustFragment() {
+    // 确保只在有原始图像时创建ImageAdjustHelper
+    if (mOriginalBitmap != null) {
+      if (mImageAdjustHelper == null) {
+        Log.d(TAG, "创建ImageAdjustHelper")
+        mImageAdjustHelper = ImageAdjustHelper(mPhotoEditorView!!.source, mOriginalBitmap!!)
+      }
+      showBottomSheetDialogFragment(mAdjustFragment)
+    } else {
+      // 如果原始图像为空，尝试重新获取
+      try {
+        val bitmap = Bitmap.createBitmap(
+          mPhotoEditorView!!.source.width,
+          mPhotoEditorView!!.source.height,
+          Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bitmap)
+        mPhotoEditorView!!.source.drawable.setBounds(
+          0, 0,
+          mPhotoEditorView!!.source.width,
+          mPhotoEditorView!!.source.height
+        )
+        mPhotoEditorView!!.source.drawable.draw(canvas)
+        mOriginalBitmap = bitmap
+
+        Log.d(TAG, "调整工具: 重新获取原始图像成功")
+        mImageAdjustHelper = ImageAdjustHelper(mPhotoEditorView!!.source, mOriginalBitmap!!)
+        showBottomSheetDialogFragment(mAdjustFragment)
+      } catch (e: Exception) {
+        Log.e(TAG, "调整工具: 获取原始图像失败: ${e.message}")
+        // 显示错误提示
+        showSnackbar("无法获取原始图像，请重试")
+      }
+    }
   }
 }

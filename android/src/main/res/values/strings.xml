@@ -2,6 +2,7 @@
   <string name="app_name">Photo Editor</string>
   <string name="label_brush">画笔</string>
   <string name="label_shape">形状</string>
+  <string name="shapeBrush">图形</string>
   <string name="label_oval">椭圆</string>
   <string name="label_rectangle">矩形</string>
   <string name="label_line">直线</string>
@@ -12,6 +13,8 @@
   <string name="label_text">文字</string>
   <string name="label_filter">滤镜</string>
   <string name="label_adjust">调整</string>
+  <string name="label_crop">裁剪</string>
+  <string name="text_hint">在此处输入文字...</string>
   <string name="msg_save_image">是否要退出而不保存图片？</string>
   <string name="app_intent_name">PhotoEditor</string>
   <string name="msg_save_image_to_share">请保存图片以分享</string>

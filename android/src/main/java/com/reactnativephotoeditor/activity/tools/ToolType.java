@@ -11,5 +11,6 @@ public enum ToolType {
   FILTER,
   TEXT,
   STICKER,
-  ADJUST
+  ADJUST,
+  CROP
 }

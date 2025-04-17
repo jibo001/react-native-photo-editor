@@ -1,6 +1,6 @@
 {
   "name": "@jibo001/react-native-photo-editor",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "🌄 Image editor using native modules for iOS and Android",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -149,5 +149,5 @@
         }
       ]
     ]
-  }
+  },
 }

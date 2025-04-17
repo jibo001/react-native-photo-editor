@@ -31,6 +31,7 @@ public class EditingToolsAdapter extends RecyclerView.Adapter<EditingToolsAdapte
     mToolList.add(new ToolModel("文字", R.drawable.ic_smallcaps, ToolType.TEXT));
     mToolList.add(new ToolModel("滤镜", R.drawable.ic_colorfilter, ToolType.FILTER));
     mToolList.add(new ToolModel("调整", R.drawable.ic_adjust, ToolType.ADJUST));
+    mToolList.add(new ToolModel("裁剪", R.drawable.ic_crop, ToolType.CROP));
     // mToolList.add(new ToolModel("Sticker", R.drawable.ic_sticker, ToolType.STICKER));
   }
 

@@ -15,6 +15,7 @@ import android.widget.TextView;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
@@ -53,6 +54,14 @@ public class TextEditorDialogFragment extends DialogFragment {
         fragment.setArguments(args);
         fragment.show(appCompatActivity.getSupportFragmentManager(), TAG);
         return fragment;
+    }
+
+    //Show dialog with a hint from string resource
+    public static TextEditorDialogFragment show(@NonNull AppCompatActivity appCompatActivity,
+                                                @StringRes int hintResId) {
+        String hint = appCompatActivity.getString(hintResId);
+        return show(appCompatActivity, hint,
+                ContextCompat.getColor(appCompatActivity, R.color.white));
     }
 
     //Show dialog with default text input as empty and text color white

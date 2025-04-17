@@ -2092,11 +2092,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jibo001/react-native-photo-editor@workspace:.":
+"@jibo001/react-native-photo-editor@npm:^1.2.1, @jibo001/react-native-photo-editor@workspace:.":
   version: 0.0.0-use.local
   resolution: "@jibo001/react-native-photo-editor@workspace:."
   dependencies:
     "@commitlint/config-conventional": "npm:^11.0.0"
+    "@jibo001/react-native-photo-editor": "npm:^1.2.1"
     "@react-native-community/eslint-config": "npm:^2.0.0"
     "@release-it/conventional-changelog": "npm:^2.0.0"
     "@types/jest": "npm:^26.0.0"
